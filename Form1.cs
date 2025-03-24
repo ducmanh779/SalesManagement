@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
@@ -109,7 +109,7 @@ namespace SalesManagement
                 DataTable customerDt = new DataTable();
                 customerAdapter.Fill(customerDt);
                 cbOrderCustomer.DataSource = customerDt;
-                cbOrderCustomer.DisplayMember = "CustomerID"; // Hiển thị CustomerID
+                cbOrderCustomer.DisplayMember = "CustomerID";
                 cbOrderCustomer.ValueMember = "CustomerID";
 
                 // Populate cbOrderEmployee with EmployeeID
@@ -117,7 +117,7 @@ namespace SalesManagement
                 DataTable employeeDt = new DataTable();
                 employeeAdapter.Fill(employeeDt);
                 cbOrderEmployee.DataSource = employeeDt;
-                cbOrderEmployee.DisplayMember = "EmployeeID"; // Hiển thị EmployeeID
+                cbOrderEmployee.DisplayMember = "EmployeeID";
                 cbOrderEmployee.ValueMember = "EmployeeID";
 
                 // Populate cbOrderStatus
@@ -125,6 +125,10 @@ namespace SalesManagement
 
                 // Populate cbEmpGender
                 cbEmpGender.Items.AddRange(new[] { "Male", "Female", "Other" });
+
+                // Populate cmbRole with roles
+                cmbRole.Items.AddRange(new[] { "Admin", "Employee", "Customer" });
+                cmbRole.SelectedIndex = 0; // Set default selection to the first role
             }
             catch (Exception ex)
             {
@@ -200,6 +204,11 @@ namespace SalesManagement
                         MessageBox.Show("Password is required.", "WARNING", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                         return;
                     }
+                    if (cmbRole.SelectedItem == null)
+                    {
+                        MessageBox.Show("Please select a role.", "WARNING", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        return;
+                    }
                 }
 
                 conne.Open();
@@ -228,8 +237,8 @@ namespace SalesManagement
                         query = "INSERT INTO Products (ProductName, Price, Quantity) VALUES (@ProductName, @Price, @Quantity)";
                         cmd = new SqlCommand(query, conne);
                         cmd.Parameters.AddWithValue("@ProductName", txtProName.Text);
-                        cmd.Parameters.AddWithValue("@Price", decimal.Parse(txtProPrice.Text)); // Use txtProPrice for Price
-                        cmd.Parameters.AddWithValue("@Quantity", int.Parse(txtProQuantity.Text)); // Use txtProQuantity for Quantity
+                        cmd.Parameters.AddWithValue("@Price", decimal.Parse(txtProPrice.Text));
+                        cmd.Parameters.AddWithValue("@Quantity", int.Parse(txtProQuantity.Text));
                         break;
                     case "Orders":
                         query = "INSERT INTO Orders (OrderDate, EmployeeID, CustomerID, TotalAmount, Status) VALUES (@OrderDate, @EmployeeID, @CustomerID, @TotalAmount, @Status)";
@@ -245,7 +254,7 @@ namespace SalesManagement
                         cmd = new SqlCommand(query, conne);
                         cmd.Parameters.AddWithValue("@Username", txtUsername.Text);
                         cmd.Parameters.AddWithValue("@Password", txtPassword.Text);
-                        cmd.Parameters.AddWithValue("@Role", "Customer");
+                        cmd.Parameters.AddWithValue("@Role", cmbRole.SelectedItem.ToString());
                         cmd.Parameters.AddWithValue("@EmployeeID", string.IsNullOrWhiteSpace(txtEmployeeID.Text) ? (object)DBNull.Value : txtEmployeeID.Text);
                         cmd.Parameters.AddWithValue("@CustomerID", string.IsNullOrWhiteSpace(txtCustomerID.Text) ? (object)DBNull.Value : txtCustomerID.Text);
                         break;
@@ -287,7 +296,7 @@ namespace SalesManagement
                     }
 
                     // Validate Phone: Should only contain digits (allowing optional dashes or spaces)
-                    string phonePattern = @"^[0-9\s\-]+$"; // Allows digits, spaces, and dashes
+                    string phonePattern = @"^[0-9\s\-]+$";
                     if (!Regex.IsMatch(txtCusPhone.Text, phonePattern))
                     {
                         MessageBox.Show("Phone must contain only digits (spaces or dashes are allowed).", "WARNING", MessageBoxButtons.OK, MessageBoxIcon.Warning);
@@ -295,13 +304,12 @@ namespace SalesManagement
                     }
 
                     // Validate Address: Should not look like a phone number
-                    string addressPattern = @"^[a-zA-Z0-9\s,.-]+$"; // Allows letters, numbers, spaces, commas, periods, dashes
+                    string addressPattern = @"^[a-zA-Z0-9\s,.-]+$";
                     if (!string.IsNullOrWhiteSpace(txtCusAddress.Text) && !Regex.IsMatch(txtCusAddress.Text, addressPattern))
                     {
                         MessageBox.Show("Address contains invalid characters. Only letters, numbers, spaces, commas, periods, and dashes are allowed.", "WARNING", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                         return;
                     }
-                    // Additional check: Ensure Address doesn't look like a phone number
                     if (!string.IsNullOrWhiteSpace(txtCusAddress.Text) && Regex.IsMatch(txtCusAddress.Text, phonePattern))
                     {
                         MessageBox.Show("Address cannot be a phone number.", "WARNING", MessageBoxButtons.OK, MessageBoxIcon.Warning);
@@ -316,7 +324,7 @@ namespace SalesManagement
                         return;
                     }
 
-                    // Validate Address for Employees (similar to Customers)
+                    // Validate Address for Employees
                     string addressPattern = @"^[a-zA-Z0-9\s,.-]+$";
                     if (!string.IsNullOrWhiteSpace(txtEmpAddress.Text) && !Regex.IsMatch(txtEmpAddress.Text, addressPattern))
                     {
@@ -366,6 +374,11 @@ namespace SalesManagement
                     if (string.IsNullOrWhiteSpace(txtPassword.Text))
                     {
                         MessageBox.Show("Password is required.", "WARNING", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        return;
+                    }
+                    if (cmbRole.SelectedItem == null)
+                    {
+                        MessageBox.Show("Please select a role.", "WARNING", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                         return;
                     }
                 }
@@ -418,7 +431,7 @@ namespace SalesManagement
                         cmd.Parameters.AddWithValue("@UserID", primaryKeyValue);
                         cmd.Parameters.AddWithValue("@Username", txtUsername.Text);
                         cmd.Parameters.AddWithValue("@Password", txtPassword.Text);
-                        cmd.Parameters.AddWithValue("@Role", "Customer");
+                        cmd.Parameters.AddWithValue("@Role", cmbRole.SelectedItem.ToString());
                         cmd.Parameters.AddWithValue("@EmployeeID", string.IsNullOrWhiteSpace(txtEmployeeID.Text) ? (object)DBNull.Value : txtEmployeeID.Text);
                         cmd.Parameters.AddWithValue("@CustomerID", string.IsNullOrWhiteSpace(txtCustomerID.Text) ? (object)DBNull.Value : txtCustomerID.Text);
                         break;
@@ -585,6 +598,7 @@ namespace SalesManagement
                     txtPassword.Clear();
                     txtEmployeeID.Clear();
                     txtCustomerID.Clear();
+                    cmbRole.SelectedIndex = 0;
                     break;
             }
         }
