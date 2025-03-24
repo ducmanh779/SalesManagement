@@ -1,4 +1,4 @@
-﻿using Microsoft.Data.SqlClient;
+using Microsoft.Data.SqlClient;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -53,9 +53,9 @@ namespace SalesManagement
         private void btnOrder_Click(object sender, EventArgs e)
         {
             TABLE = "Orders";
-            LoadData("Orders", "OrderID, OrderDate, EmployeeID, CustomerID");
+            LoadData("Orders", "OrderID, OrderDate, EmployeeID, CustomerID, TotalAmount, Status");
             btnSearch.Enabled = true;
-            txtSearch.Clear();
+            txtSearch.Clear(); ;
         }
 
         private void btnUsers_Click(object sender, EventArgs e)
@@ -107,7 +107,7 @@ namespace SalesManagement
                         LoadData("Customers", "CustomerID, FullName, DateOfBirth, Address, Phone, RegistrationDate");
                         break;
                     case "Orders":
-                        LoadData("Orders", "OrderID, OrderDate, EmployeeID, CustomerID");
+                        LoadData("Orders", "OrderID, OrderDate, EmployeeID, CustomerID, TotalAmount, Status");
                         break;
                     case "Users":
                         LoadData("Users", "UserID, Username, Password, Role");
@@ -143,8 +143,8 @@ namespace SalesManagement
                             query = $"SELECT {columns} FROM Products WHERE ProductName LIKE @keyword";
                             break;
                         case "Orders":
-                            columns = "OrderID, OrderDate, EmployeeID, CustomerID";
-                            query = $"SELECT {columns} FROM Orders WHERE CAST(EmployeeID AS NVARCHAR) LIKE @keyword OR CAST(CustomerID AS NVARCHAR) LIKE @keyword";
+                            columns = "OrderID, OrderDate, EmployeeID, CustomerID, TotalAmount, Status";
+                            query = $"SELECT {columns} FROM Orders WHERE CAST(EmployeeID AS NVARCHAR) LIKE @keyword OR CAST(CustomerID AS NVARCHAR) LIKE @keyword OR Status LIKE @keyword";
                             break;
                         case "Users":
                             columns = "UserID, Username, Password, Role";
@@ -183,3 +183,4 @@ namespace SalesManagement
         
     }
 }
+
