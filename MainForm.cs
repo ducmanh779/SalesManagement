@@ -1,4 +1,3 @@
-using Microsoft.Data.SqlClient;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -29,7 +28,7 @@ namespace SalesManagement
         private void btnProducts_Click(object sender, EventArgs e)
         {
             TABLE = "Products";
-            LoadData("Products", "ProductID, ProductName, Price, Quantity");
+            LoadData("Products", "ProductID, ProductCode, ProductName, Price, Quantity"); // Added ProductCode
             btnSearch.Enabled = true;
             txtSearch.Clear();
         }
@@ -98,7 +97,7 @@ namespace SalesManagement
                 switch (TABLE)
                 {
                     case "Products":
-                        LoadData("Products", "ProductID, ProductName, Price, Quantity");
+                        LoadData("Products", "ProductID, ProductCode, ProductName, Price, Quantity"); // Added ProductCode
                         break;
                     case "Employees":
                         LoadData("Employees", "EmployeeID, FullName, DateOfBirth, Gender, Address");
@@ -139,7 +138,7 @@ namespace SalesManagement
                             query = $"SELECT {columns} FROM Employees WHERE FullName LIKE @keyword";
                             break;
                         case "Products":
-                            columns = "ProductID, ProductName, Price, Quantity";
+                            columns = "ProductID, ProductCode, ProductName, Price, Quantity"; // Added ProductCode
                             query = $"SELECT {columns} FROM Products WHERE ProductName LIKE @keyword";
                             break;
                         case "Orders":
@@ -183,4 +182,3 @@ namespace SalesManagement
         
     }
 }
-
