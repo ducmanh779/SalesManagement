@@ -72,8 +72,9 @@ namespace SalesManagement
                         query = "SELECT EmployeeID, FullName, DateOfBirth, Gender, Address FROM Employees";
                         break;
                     case "Products":
-                        query = "SELECT ProductID, ProductName, Price, Quantity FROM Products";
+                        query = "SELECT ProductID, ProductCode, ProductName, Price, Quantity FROM Products"; 
                         break;
+                        
                     case "Orders":
                         query = "SELECT OrderID, OrderDate, EmployeeID, CustomerID, TotalAmount, Status FROM Orders";
                         break;
@@ -234,8 +235,9 @@ namespace SalesManagement
                         cmd.Parameters.AddWithValue("@Address", txtEmpAddress.Text);
                         break;
                     case "Products":
-                        query = "INSERT INTO Products (ProductName, Price, Quantity) VALUES (@ProductName, @Price, @Quantity)";
+                        query = "INSERT INTO Products (ProductCode, ProductName, Price, Quantity) VALUES (@ProductCode, @ProductName, @Price, @Quantity)"; // Added ProductCode
                         cmd = new SqlCommand(query, conne);
+                        cmd.Parameters.AddWithValue("@ProductCode", txtProductCode.Text);
                         cmd.Parameters.AddWithValue("@ProductName", txtProName.Text);
                         cmd.Parameters.AddWithValue("@Price", decimal.Parse(txtProPrice.Text));
                         cmd.Parameters.AddWithValue("@Quantity", int.Parse(txtProQuantity.Text));
@@ -408,9 +410,10 @@ namespace SalesManagement
                         cmd.Parameters.AddWithValue("@Address", txtEmpAddress.Text);
                         break;
                     case "Products":
-                        query = "UPDATE Products SET ProductName = @ProductName, Price = @Price, Quantity = @Quantity WHERE ProductID = @ProductID";
+                        query = "UPDATE Products SET ProductCode = @ProductCode, ProductName = @ProductName, Price = @Price, Quantity = @Quantity WHERE ProductID = @ProductID"; // Added ProductCode
                         cmd = new SqlCommand(query, conne);
                         cmd.Parameters.AddWithValue("@ProductID", primaryKeyValue);
+                        cmd.Parameters.AddWithValue("@ProductCode", txtProductCode.Text);
                         cmd.Parameters.AddWithValue("@ProductName", txtProName.Text);
                         cmd.Parameters.AddWithValue("@Price", decimal.Parse(txtProPrice.Text));
                         cmd.Parameters.AddWithValue("@Quantity", int.Parse(txtProQuantity.Text));
@@ -516,8 +519,9 @@ namespace SalesManagement
                                 "OR TRIM(Address) LIKE @keyword COLLATE SQL_Latin1_General_CP1_CI_AS";
                         break;
                     case "Products":
-                        query = "SELECT ProductID, ProductName, Price, Quantity FROM Products " +
+                        query = "SELECT ProductID, ProductCode, ProductName, Price, Quantity FROM Products " +
                                 "WHERE CAST(ProductID AS NVARCHAR) LIKE @keyword " +
+                                "OR TRIM(ProductCode) LIKE @keyword COLLATE SQL_Latin1_General_CP1_CI_AS " + // Added ProductCode
                                 "OR TRIM(ProductName) LIKE @keyword COLLATE SQL_Latin1_General_CP1_CI_AS " +
                                 "OR CAST(Price AS NVARCHAR) LIKE @keyword " +
                                 "OR CAST(Quantity AS NVARCHAR) LIKE @keyword";
@@ -580,6 +584,7 @@ namespace SalesManagement
                     break;
                 case "Products":
                     txtProID.Clear();
+                    txtProductCode.Clear(); // Added
                     txtProName.Clear();
                     txtProQuantity.Clear();
                     txtProPrice.Clear();
