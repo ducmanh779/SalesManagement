@@ -69,12 +69,11 @@ namespace SalesManagement
                         query = "SELECT CustomerID, FullName, DateOfBirth, Address, Phone, RegistrationDate FROM Customers";
                         break;
                     case "Employees":
-                        query = "SELECT EmployeeID, FullName, DateOfBirth, Gender, Address FROM Employees";
+                        query = "SELECT EmployeeID, EmployeeCode, FullName, DateOfBirth, Gender, Position, Address FROM Employees"; 
                         break;
                     case "Products":
-                        query = "SELECT ProductID, ProductCode, ProductName, Price, Quantity FROM Products"; 
+                        query = "SELECT ProductID, ProductCode, ProductName, Price, Quantity FROM Products";
                         break;
-                        
                     case "Orders":
                         query = "SELECT OrderID, OrderDate, EmployeeID, CustomerID, TotalAmount, Status FROM Orders";
                         break;
@@ -95,7 +94,8 @@ namespace SalesManagement
             }
             finally
             {
-                conne.Close();
+                if (conne.State == ConnectionState.Open)
+                    conne.Close();
             }
         }
 
@@ -127,9 +127,12 @@ namespace SalesManagement
                 // Populate cbEmpGender
                 cbEmpGender.Items.AddRange(new[] { "Male", "Female", "Other" });
 
+                // Populate cbEmpPosition (mới)
+                cbEmpPosition.Items.AddRange(new[] { "Manager", "Sales", "Staff" });
+
                 // Populate cmbRole with roles
                 cmbRole.Items.AddRange(new[] { "Admin", "Employee", "Customer" });
-                cmbRole.SelectedIndex = 0; // Set default selection to the first role
+                cmbRole.SelectedIndex = 0;
             }
             catch (Exception ex)
             {
@@ -137,7 +140,8 @@ namespace SalesManagement
             }
             finally
             {
-                conne.Close();
+                if (conne.State == ConnectionState.Open)
+                    conne.Close();
             }
         }
 
@@ -145,7 +149,6 @@ namespace SalesManagement
         {
             try
             {
-                // Input validation
                 if (tableName == "Customers")
                 {
                     if (string.IsNullOrWhiteSpace(txtCusName.Text))
@@ -164,6 +167,16 @@ namespace SalesManagement
                     if (string.IsNullOrWhiteSpace(txtEmpName.Text))
                     {
                         MessageBox.Show("Employee Name is required.", "WARNING", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        return;
+                    }
+                    if (string.IsNullOrWhiteSpace(txtEmpCode.Text)) // Kiểm tra EmployeeCode
+                    {
+                        MessageBox.Show("Employee Code is required.", "WARNING", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        return;
+                    }
+                    if (cbEmpPosition.SelectedItem == null) // Kiểm tra Position
+                    {
+                        MessageBox.Show("Position is required.", "WARNING", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                         return;
                     }
                 }
@@ -187,9 +200,9 @@ namespace SalesManagement
                 }
                 else if (tableName == "Orders")
                 {
-                    if (!decimal.TryParse(txtOrderTotal.Text, out decimal totalAmount) || totalAmount < 0)
+                    if (cbOrderCustomer.SelectedValue == null)
                     {
-                        MessageBox.Show("Total Amount must be a valid number greater than or equal to 0.", "WARNING", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        MessageBox.Show("Please select a Customer.", "WARNING", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                         return;
                     }
                 }
@@ -214,57 +227,62 @@ namespace SalesManagement
 
                 conne.Open();
                 string query = "";
-                SqlCommand cmd;
-                switch (tableName)
+                using (SqlCommand cmd = new SqlCommand())
                 {
-                    case "Customers":
-                        query = "INSERT INTO Customers (FullName, DateOfBirth, Address, Phone, RegistrationDate) VALUES (@FullName, @DateOfBirth, @Address, @Phone, @RegistrationDate)";
-                        cmd = new SqlCommand(query, conne);
-                        cmd.Parameters.AddWithValue("@FullName", txtCusName.Text);
-                        cmd.Parameters.AddWithValue("@DateOfBirth", dtpCusDOB.Value);
-                        cmd.Parameters.AddWithValue("@Address", txtCusAddress.Text);
-                        cmd.Parameters.AddWithValue("@Phone", txtCusPhone.Text);
-                        cmd.Parameters.AddWithValue("@RegistrationDate", dtpCusDOB.Value);
-                        break;
-                    case "Employees":
-                        query = "INSERT INTO Employees (FullName, DateOfBirth, Gender, Address) VALUES (@FullName, @DateOfBirth, @Gender, @Address)";
-                        cmd = new SqlCommand(query, conne);
-                        cmd.Parameters.AddWithValue("@FullName", txtEmpName.Text);
-                        cmd.Parameters.AddWithValue("@DateOfBirth", dtpEmpDOB.Value);
-                        cmd.Parameters.AddWithValue("@Gender", cbEmpGender.SelectedItem?.ToString() ?? "Other");
-                        cmd.Parameters.AddWithValue("@Address", txtEmpAddress.Text);
-                        break;
-                    case "Products":
-                        query = "INSERT INTO Products (ProductCode, ProductName, Price, Quantity) VALUES (@ProductCode, @ProductName, @Price, @Quantity)"; // Added ProductCode
-                        cmd = new SqlCommand(query, conne);
-                        cmd.Parameters.AddWithValue("@ProductCode", txtProductCode.Text);
-                        cmd.Parameters.AddWithValue("@ProductName", txtProName.Text);
-                        cmd.Parameters.AddWithValue("@Price", decimal.Parse(txtProPrice.Text));
-                        cmd.Parameters.AddWithValue("@Quantity", int.Parse(txtProQuantity.Text));
-                        break;
-                    case "Orders":
-                        query = "INSERT INTO Orders (OrderDate, EmployeeID, CustomerID, TotalAmount, Status) VALUES (@OrderDate, @EmployeeID, @CustomerID, @TotalAmount, @Status)";
-                        cmd = new SqlCommand(query, conne);
-                        cmd.Parameters.AddWithValue("@OrderDate", dtpOrderDate.Value);
-                        cmd.Parameters.AddWithValue("@EmployeeID", cbOrderEmployee.SelectedValue ?? (object)DBNull.Value);
-                        cmd.Parameters.AddWithValue("@CustomerID", cbOrderCustomer.SelectedValue);
-                        cmd.Parameters.AddWithValue("@TotalAmount", decimal.Parse(txtOrderTotal.Text));
-                        cmd.Parameters.AddWithValue("@Status", cbOrderStatus.SelectedItem?.ToString() ?? "Pending");
-                        break;
-                    case "Users":
-                        query = "INSERT INTO Users (Username, Password, Role, EmployeeID, CustomerID) VALUES (@Username, @Password, @Role, @EmployeeID, @CustomerID)";
-                        cmd = new SqlCommand(query, conne);
-                        cmd.Parameters.AddWithValue("@Username", txtUsername.Text);
-                        cmd.Parameters.AddWithValue("@Password", txtPassword.Text);
-                        cmd.Parameters.AddWithValue("@Role", cmbRole.SelectedItem.ToString());
-                        cmd.Parameters.AddWithValue("@EmployeeID", string.IsNullOrWhiteSpace(txtEmployeeID.Text) ? (object)DBNull.Value : txtEmployeeID.Text);
-                        cmd.Parameters.AddWithValue("@CustomerID", string.IsNullOrWhiteSpace(txtCustomerID.Text) ? (object)DBNull.Value : txtCustomerID.Text);
-                        break;
-                    default:
-                        throw new Exception("Invalid table name");
+                    cmd.Connection = conne;
+                    switch (tableName)
+                    {
+                        case "Customers":
+                            query = "INSERT INTO Customers (FullName, DateOfBirth, Address, Phone, RegistrationDate) VALUES (@FullName, @DateOfBirth, @Address, @Phone, @RegistrationDate)";
+                            cmd.CommandText = query;
+                            cmd.Parameters.AddWithValue("@FullName", txtCusName.Text);
+                            cmd.Parameters.AddWithValue("@DateOfBirth", dtpCuDateOfBirth.Value);
+                            cmd.Parameters.AddWithValue("@Address", txtCusAddress.Text);
+                            cmd.Parameters.AddWithValue("@Phone", txtCusPhone.Text);
+                            cmd.Parameters.AddWithValue("@RegistrationDate", dtpCusRegistrationDate.Value);
+                            break;
+                        case "Employees":
+                            query = "INSERT INTO Employees (EmployeeCode, FullName, DateOfBirth, Gender, Position, Address) VALUES (@EmployeeCode, @FullName, @DateOfBirth, @Gender, @Position, @Address)";
+                            cmd.CommandText = query;
+                            cmd.Parameters.AddWithValue("@EmployeeCode", txtEmpCode.Text); // Thêm EmployeeCode
+                            cmd.Parameters.AddWithValue("@FullName", txtEmpName.Text);
+                            cmd.Parameters.AddWithValue("@DateOfBirth", dtpEmpDOB.Value);
+                            cmd.Parameters.AddWithValue("@Gender", cbEmpGender.SelectedItem?.ToString() ?? "Other");
+                            cmd.Parameters.AddWithValue("@Position", cbEmpPosition.SelectedItem.ToString()); // Thêm Position
+                            cmd.Parameters.AddWithValue("@Address", txtEmpAddress.Text);
+                            break;
+                        case "Products":
+                            query = "INSERT INTO Products (ProductCode, ProductName, Price, Quantity) VALUES (@ProductCode, @ProductName, @Price, @Quantity)";
+                            cmd.CommandText = query;
+                            cmd.Parameters.AddWithValue("@ProductCode", txtProductCode.Text);
+                            cmd.Parameters.AddWithValue("@ProductName", txtProName.Text);
+                            cmd.Parameters.AddWithValue("@Price", decimal.Parse(txtProPrice.Text));
+                            cmd.Parameters.AddWithValue("@Quantity", int.Parse(txtProQuantity.Text));
+                            break;
+                        case "Orders":
+                            query = "INSERT INTO Orders (OrderDate, EmployeeID, CustomerID, TotalAmount, Status) VALUES (@OrderDate, @EmployeeID, @CustomerID, @TotalAmount, @Status)";
+                            cmd.CommandText = query;
+                            cmd.Parameters.AddWithValue("@OrderDate", dtpOrderDate.Value);
+                            cmd.Parameters.AddWithValue("@EmployeeID", cbOrderEmployee.SelectedValue ?? (object)DBNull.Value);
+                            cmd.Parameters.AddWithValue("@CustomerID", cbOrderCustomer.SelectedValue);
+                            cmd.Parameters.AddWithValue("@TotalAmount", 0);
+                            cmd.Parameters.AddWithValue("@Status", cbOrderStatus.SelectedItem?.ToString() ?? "Pending");
+                            break;
+                        case "Users":
+                            query = "INSERT INTO Users (Username, Password, Role, EmployeeID, CustomerID) VALUES (@Username, @Password, @Role, @EmployeeID, @CustomerID)";
+                            cmd.CommandText = query;
+                            cmd.Parameters.AddWithValue("@Username", txtUsername.Text);
+                            cmd.Parameters.AddWithValue("@Password", txtPassword.Text);
+                            cmd.Parameters.AddWithValue("@Role", cmbRole.SelectedItem.ToString());
+                            cmd.Parameters.AddWithValue("@EmployeeID", string.IsNullOrWhiteSpace(txtEmployeeID.Text) ? (object)DBNull.Value : txtEmployeeID.Text);
+                            cmd.Parameters.AddWithValue("@CustomerID", string.IsNullOrWhiteSpace(txtCustomerID.Text) ? (object)DBNull.Value : txtCustomerID.Text);
+                            break;
+                        default:
+                            throw new Exception("Invalid table name");
+                    }
+                    cmd.ExecuteNonQuery();
                 }
 
-                cmd.ExecuteNonQuery();
                 MessageBox.Show("Data added successfully!", "SUCCESS", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 ClearFields(tableName);
             }
@@ -274,7 +292,8 @@ namespace SalesManagement
             }
             finally
             {
-                conne.Close();
+                if (conne.State == ConnectionState.Open)
+                    conne.Close();
                 LoadTableData(tableName, dataGridView);
             }
         }
@@ -283,7 +302,6 @@ namespace SalesManagement
         {
             try
             {
-                // Input validation for all tables
                 if (tableName == "Customers")
                 {
                     if (string.IsNullOrWhiteSpace(txtCusName.Text))
@@ -297,7 +315,6 @@ namespace SalesManagement
                         return;
                     }
 
-                    // Validate Phone: Should only contain digits (allowing optional dashes or spaces)
                     string phonePattern = @"^[0-9\s\-]+$";
                     if (!Regex.IsMatch(txtCusPhone.Text, phonePattern))
                     {
@@ -305,7 +322,6 @@ namespace SalesManagement
                         return;
                     }
 
-                    // Validate Address: Should not look like a phone number
                     string addressPattern = @"^[a-zA-Z0-9\s,.-]+$";
                     if (!string.IsNullOrWhiteSpace(txtCusAddress.Text) && !Regex.IsMatch(txtCusAddress.Text, addressPattern))
                     {
@@ -326,7 +342,6 @@ namespace SalesManagement
                         return;
                     }
 
-                    // Validate Address for Employees
                     string addressPattern = @"^[a-zA-Z0-9\s,.-]+$";
                     if (!string.IsNullOrWhiteSpace(txtEmpAddress.Text) && !Regex.IsMatch(txtEmpAddress.Text, addressPattern))
                     {
@@ -360,9 +375,9 @@ namespace SalesManagement
                 }
                 else if (tableName == "Orders")
                 {
-                    if (!decimal.TryParse(txtOrderTotal.Text, out decimal totalAmount) || totalAmount < 0)
+                    if (cbOrderCustomer.SelectedValue == null)
                     {
-                        MessageBox.Show("Total Amount must be a valid number greater than or equal to 0.", "WARNING", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        MessageBox.Show("Please select a Customer.", "WARNING", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                         return;
                     }
                 }
@@ -387,62 +402,67 @@ namespace SalesManagement
 
                 conne.Open();
                 string query = "";
-                SqlCommand cmd;
-                switch (tableName)
+                using (SqlCommand cmd = new SqlCommand())
                 {
-                    case "Customers":
-                        query = "UPDATE Customers SET FullName = @FullName, DateOfBirth = @DateOfBirth, Address = @Address, Phone = @Phone, RegistrationDate = @RegistrationDate WHERE CustomerID = @CustomerID";
-                        cmd = new SqlCommand(query, conne);
-                        cmd.Parameters.AddWithValue("@CustomerID", primaryKeyValue);
-                        cmd.Parameters.AddWithValue("@FullName", txtCusName.Text);
-                        cmd.Parameters.AddWithValue("@DateOfBirth", dtpCusDOB.Value);
-                        cmd.Parameters.AddWithValue("@Address", txtCusAddress.Text);
-                        cmd.Parameters.AddWithValue("@Phone", txtCusPhone.Text);
-                        cmd.Parameters.AddWithValue("@RegistrationDate", dtpCusDOB.Value);
-                        break;
-                    case "Employees":
-                        query = "UPDATE Employees SET FullName = @FullName, DateOfBirth = @DateOfBirth, Gender = @Gender, Address = @Address WHERE EmployeeID = @EmployeeID";
-                        cmd = new SqlCommand(query, conne);
-                        cmd.Parameters.AddWithValue("@EmployeeID", primaryKeyValue);
-                        cmd.Parameters.AddWithValue("@FullName", txtEmpName.Text);
-                        cmd.Parameters.AddWithValue("@DateOfBirth", dtpEmpDOB.Value);
-                        cmd.Parameters.AddWithValue("@Gender", cbEmpGender.SelectedItem?.ToString() ?? "Other");
-                        cmd.Parameters.AddWithValue("@Address", txtEmpAddress.Text);
-                        break;
-                    case "Products":
-                        query = "UPDATE Products SET ProductCode = @ProductCode, ProductName = @ProductName, Price = @Price, Quantity = @Quantity WHERE ProductID = @ProductID"; // Added ProductCode
-                        cmd = new SqlCommand(query, conne);
-                        cmd.Parameters.AddWithValue("@ProductID", primaryKeyValue);
-                        cmd.Parameters.AddWithValue("@ProductCode", txtProductCode.Text);
-                        cmd.Parameters.AddWithValue("@ProductName", txtProName.Text);
-                        cmd.Parameters.AddWithValue("@Price", decimal.Parse(txtProPrice.Text));
-                        cmd.Parameters.AddWithValue("@Quantity", int.Parse(txtProQuantity.Text));
-                        break;
-                    case "Orders":
-                        query = "UPDATE Orders SET OrderDate = @OrderDate, EmployeeID = @EmployeeID, CustomerID = @CustomerID, TotalAmount = @TotalAmount, Status = @Status WHERE OrderID = @OrderID";
-                        cmd = new SqlCommand(query, conne);
-                        cmd.Parameters.AddWithValue("@OrderID", primaryKeyValue);
-                        cmd.Parameters.AddWithValue("@OrderDate", dtpOrderDate.Value);
-                        cmd.Parameters.AddWithValue("@EmployeeID", cbOrderEmployee.SelectedValue ?? (object)DBNull.Value);
-                        cmd.Parameters.AddWithValue("@CustomerID", cbOrderCustomer.SelectedValue);
-                        cmd.Parameters.AddWithValue("@TotalAmount", decimal.Parse(txtOrderTotal.Text));
-                        cmd.Parameters.AddWithValue("@Status", cbOrderStatus.SelectedItem?.ToString() ?? "Pending");
-                        break;
-                    case "Users":
-                        query = "UPDATE Users SET Username = @Username, Password = @Password, Role = @Role, EmployeeID = @EmployeeID, CustomerID = @CustomerID WHERE UserID = @UserID";
-                        cmd = new SqlCommand(query, conne);
-                        cmd.Parameters.AddWithValue("@UserID", primaryKeyValue);
-                        cmd.Parameters.AddWithValue("@Username", txtUsername.Text);
-                        cmd.Parameters.AddWithValue("@Password", txtPassword.Text);
-                        cmd.Parameters.AddWithValue("@Role", cmbRole.SelectedItem.ToString());
-                        cmd.Parameters.AddWithValue("@EmployeeID", string.IsNullOrWhiteSpace(txtEmployeeID.Text) ? (object)DBNull.Value : txtEmployeeID.Text);
-                        cmd.Parameters.AddWithValue("@CustomerID", string.IsNullOrWhiteSpace(txtCustomerID.Text) ? (object)DBNull.Value : txtCustomerID.Text);
-                        break;
-                    default:
-                        throw new Exception("Invalid table name");
+                    cmd.Connection = conne;
+                    switch (tableName)
+                    {
+                        case "Customers":
+                            query = "UPDATE Customers SET FullName = @FullName, DateOfBirth = @DateOfBirth, Address = @Address, Phone = @Phone, RegistrationDate = @RegistrationDate WHERE CustomerID = @CustomerID";
+                            cmd.CommandText = query;
+                            cmd.Parameters.AddWithValue("@CustomerID", primaryKeyValue);
+                            cmd.Parameters.AddWithValue("@FullName", txtCusName.Text);
+                            cmd.Parameters.AddWithValue("@DateOfBirth", dtpCuDateOfBirth.Value);
+                            cmd.Parameters.AddWithValue("@Address", txtCusAddress.Text);
+                            cmd.Parameters.AddWithValue("@Phone", txtCusPhone.Text);
+                            cmd.Parameters.AddWithValue("@RegistrationDate", dtpCusRegistrationDate.Value);
+                            break;
+                        case "Employees":
+                            query = "UPDATE Employees SET EmployeeCode = @EmployeeCode, FullName = @FullName, DateOfBirth = @DateOfBirth, Gender = @Gender, Position = @Position, Address = @Address WHERE EmployeeID = @EmployeeID";
+                            cmd.CommandText = query;
+                            cmd.Parameters.AddWithValue("@EmployeeID", primaryKeyValue);
+                            cmd.Parameters.AddWithValue("@EmployeeCode", txtEmpCode.Text);
+                            cmd.Parameters.AddWithValue("@FullName", txtEmpName.Text);
+                            cmd.Parameters.AddWithValue("@DateOfBirth", dtpEmpDOB.Value);
+                            cmd.Parameters.AddWithValue("@Gender", cbEmpGender.SelectedItem?.ToString() ?? "Other");
+                            cmd.Parameters.AddWithValue("@Position", cbEmpPosition.SelectedItem.ToString()); 
+                            cmd.Parameters.AddWithValue("@Address", txtEmpAddress.Text);
+                            break;
+                        case "Products":
+                            query = "UPDATE Products SET ProductCode = @ProductCode, ProductName = @ProductName, Price = @Price, Quantity = @Quantity WHERE ProductID = @ProductID";
+                            cmd.CommandText = query;
+                            cmd.Parameters.AddWithValue("@ProductID", primaryKeyValue);
+                            cmd.Parameters.AddWithValue("@ProductCode", txtProductCode.Text);
+                            cmd.Parameters.AddWithValue("@ProductName", txtProName.Text);
+                            cmd.Parameters.AddWithValue("@Price", decimal.Parse(txtProPrice.Text));
+                            cmd.Parameters.AddWithValue("@Quantity", int.Parse(txtProQuantity.Text));
+                            break;
+                        case "Orders":
+                            query = "UPDATE Orders SET OrderDate = @OrderDate, EmployeeID = @EmployeeID, CustomerID = @CustomerID, TotalAmount = @TotalAmount, Status = @Status WHERE OrderID = @OrderID";
+                            cmd.CommandText = query;
+                            cmd.Parameters.AddWithValue("@OrderID", primaryKeyValue);
+                            cmd.Parameters.AddWithValue("@OrderDate", dtpOrderDate.Value);
+                            cmd.Parameters.AddWithValue("@EmployeeID", cbOrderEmployee.SelectedValue ?? (object)DBNull.Value);
+                            cmd.Parameters.AddWithValue("@CustomerID", cbOrderCustomer.SelectedValue);
+                            cmd.Parameters.AddWithValue("@TotalAmount", string.IsNullOrWhiteSpace(txtOrderTotal.Text) ? 0 : decimal.Parse(txtOrderTotal.Text));
+                            cmd.Parameters.AddWithValue("@Status", cbOrderStatus.SelectedItem?.ToString() ?? "Pending");
+                            break;
+                        case "Users":
+                            query = "UPDATE Users SET Username = @Username, Password = @Password, Role = @Role, EmployeeID = @EmployeeID, CustomerID = @CustomerID WHERE UserID = @UserID";
+                            cmd.CommandText = query;
+                            cmd.Parameters.AddWithValue("@UserID", primaryKeyValue);
+                            cmd.Parameters.AddWithValue("@Username", txtUsername.Text);
+                            cmd.Parameters.AddWithValue("@Password", txtPassword.Text);
+                            cmd.Parameters.AddWithValue("@Role", cmbRole.SelectedItem.ToString());
+                            cmd.Parameters.AddWithValue("@EmployeeID", string.IsNullOrWhiteSpace(txtEmployeeID.Text) ? (object)DBNull.Value : txtEmployeeID.Text);
+                            cmd.Parameters.AddWithValue("@CustomerID", string.IsNullOrWhiteSpace(txtCustomerID.Text) ? (object)DBNull.Value : txtCustomerID.Text);
+                            break;
+                        default:
+                            throw new Exception("Invalid table name");
+                    }
+                    cmd.ExecuteNonQuery();
                 }
 
-                cmd.ExecuteNonQuery();
                 MessageBox.Show("Data updated successfully!", "SUCCESS", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 ClearFields(tableName);
             }
@@ -452,27 +472,31 @@ namespace SalesManagement
             }
             finally
             {
-                conne.Close();
+                if (conne.State == ConnectionState.Open)
+                    conne.Close();
                 LoadTableData(tableName, dataGridView);
             }
         }
 
-            private void DeleteData(string tableName, DataGridView dataGridView, string primaryKeyColumn, string primaryKeyValue)
+        private void DeleteData(string tableName, DataGridView dataGridView, string primaryKeyColumn, string primaryKeyValue)
         {
             try
             {
                 conne.Open();
                 string query = $"DELETE FROM [{tableName}] WHERE {primaryKeyColumn} = @primaryKey";
-                SqlCommand cmd = new SqlCommand(query, conne);
-                cmd.Parameters.AddWithValue("@primaryKey", primaryKeyValue);
-                cmd.ExecuteNonQuery();
+                using (SqlCommand cmd = new SqlCommand(query, conne))
+                {
+                    cmd.Parameters.AddWithValue("@primaryKey", primaryKeyValue);
+                    cmd.ExecuteNonQuery();
+                }
+
                 MessageBox.Show("Data deleted successfully!", "SUCCESS", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
             catch (Exception ex)
             {
                 if (ex.Message.Contains("REFERENCE constraint"))
                 {
-                    MessageBox.Show($"Cannot delete this record because it is referenced by another table (e.g., Orders).", "ERROR", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    MessageBox.Show($"Cannot delete this record because it is referenced by another table.", "ERROR", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 }
                 else
                 {
@@ -481,7 +505,8 @@ namespace SalesManagement
             }
             finally
             {
-                conne.Close();
+                if (conne.State == ConnectionState.Open)
+                    conne.Close();
                 LoadTableData(tableName, dataGridView);
             }
         }
@@ -492,7 +517,6 @@ namespace SalesManagement
             {
                 if (string.IsNullOrWhiteSpace(searchValue))
                 {
-                    // If the search value is empty, reload the full table data
                     LoadTableData(tableName, dataGridView);
                     return;
                 }
@@ -511,17 +535,19 @@ namespace SalesManagement
                                 "OR CAST(RegistrationDate AS NVARCHAR) LIKE @keyword";
                         break;
                     case "Employees":
-                        query = "SELECT EmployeeID, FullName, DateOfBirth, Gender, Address FROM Employees " +
+                        query = "SELECT EmployeeID, EmployeeCode, FullName, DateOfBirth, Gender, Position, Address FROM Employees " +
                                 "WHERE CAST(EmployeeID AS NVARCHAR) LIKE @keyword " +
+                                "OR TRIM(EmployeeCode) LIKE @keyword COLLATE SQL_Latin1_General_CP1_CI_AS " + // Thêm EmployeeCode
                                 "OR TRIM(FullName) LIKE @keyword COLLATE SQL_Latin1_General_CP1_CI_AS " +
                                 "OR CAST(DateOfBirth AS NVARCHAR) LIKE @keyword " +
                                 "OR TRIM(Gender) LIKE @keyword COLLATE SQL_Latin1_General_CP1_CI_AS " +
+                                "OR TRIM(Position) LIKE @keyword COLLATE SQL_Latin1_General_CP1_CI_AS " + // Thêm Position
                                 "OR TRIM(Address) LIKE @keyword COLLATE SQL_Latin1_General_CP1_CI_AS";
                         break;
                     case "Products":
                         query = "SELECT ProductID, ProductCode, ProductName, Price, Quantity FROM Products " +
                                 "WHERE CAST(ProductID AS NVARCHAR) LIKE @keyword " +
-                                "OR TRIM(ProductCode) LIKE @keyword COLLATE SQL_Latin1_General_CP1_CI_AS " + // Added ProductCode
+                                "OR TRIM(ProductCode) LIKE @keyword COLLATE SQL_Latin1_General_CP1_CI_AS " +
                                 "OR TRIM(ProductName) LIKE @keyword COLLATE SQL_Latin1_General_CP1_CI_AS " +
                                 "OR CAST(Price AS NVARCHAR) LIKE @keyword " +
                                 "OR CAST(Quantity AS NVARCHAR) LIKE @keyword";
@@ -547,12 +573,14 @@ namespace SalesManagement
                         throw new Exception("Invalid table name");
                 }
 
-                SqlCommand cmd = new SqlCommand(query, conne);
-                cmd.Parameters.Add("@keyword", SqlDbType.NVarChar).Value = "%" + searchValue + "%"; // Explicitly set parameter type
-                SqlDataAdapter adapter = new SqlDataAdapter(cmd);
-                DataTable dt = new DataTable();
-                adapter.Fill(dt);
-                dataGridView.DataSource = dt;
+                using (SqlCommand cmd = new SqlCommand(query, conne))
+                {
+                    cmd.Parameters.Add("@keyword", SqlDbType.NVarChar).Value = "%" + searchValue + "%";
+                    SqlDataAdapter adapter = new SqlDataAdapter(cmd);
+                    DataTable dt = new DataTable();
+                    adapter.Fill(dt);
+                    dataGridView.DataSource = dt;
+                }
             }
             catch (Exception ex)
             {
@@ -560,7 +588,8 @@ namespace SalesManagement
             }
             finally
             {
-                conne.Close();
+                if (conne.State == ConnectionState.Open)
+                    conne.Close();
             }
         }
 
@@ -573,18 +602,21 @@ namespace SalesManagement
                     txtCusName.Clear();
                     txtCusPhone.Clear();
                     txtCusAddress.Clear();
-                    dtpCusDOB.Value = DateTime.Now;
+                    dtpCuDateOfBirth.Value = DateTime.Now;
+                    dtpCusRegistrationDate.Value = DateTime.Now;
                     break;
                 case "Employees":
                     txtEmpID.Clear();
+                    txtEmpCode.Clear(); 
                     txtEmpName.Clear();
                     txtEmpAddress.Clear();
                     dtpEmpDOB.Value = DateTime.Now;
                     cbEmpGender.SelectedIndex = -1;
+                    cbEmpPosition.SelectedIndex = -1; 
                     break;
                 case "Products":
                     txtProID.Clear();
-                    txtProductCode.Clear(); // Added
+                    txtProductCode.Clear();
                     txtProName.Clear();
                     txtProQuantity.Clear();
                     txtProPrice.Clear();
@@ -802,6 +834,18 @@ namespace SalesManagement
         }
 
         private void Management_Load(object sender, EventArgs e)
+        {
+        }
+
+        private void label13_Click(object sender, EventArgs e)
+        {
+        }
+
+        private void label26_Click(object sender, EventArgs e)
+        {
+        }
+
+        private void label14_Click(object sender, EventArgs e)
         {
 
         }
