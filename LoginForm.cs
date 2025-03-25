@@ -45,8 +45,8 @@ namespace SalesManagement
                 return;
             }
 
-            string adminUser = "An123";
-            string adminPass = "123";
+             string adminUser = "Duc";
+             string adminPass = "123";
 
             if (username == adminUser && password == adminPass)
             {
