@@ -1,3 +1,4 @@
+using Microsoft.Data.SqlClient;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -36,7 +37,7 @@ namespace SalesManagement
         private void btnEmployees_Click(object sender, EventArgs e)
         {
             TABLE = "Employees";
-            LoadData("Employees", "EmployeeID, FullName, DateOfBirth, Gender, Address");
+            LoadData("Employees", "EmployeeID, EmployeeCode, FullName, DateOfBirth, Gender, Position, Address"); 
             btnSearch.Enabled = true;
             txtSearch.Clear();
         }
@@ -97,10 +98,10 @@ namespace SalesManagement
                 switch (TABLE)
                 {
                     case "Products":
-                        LoadData("Products", "ProductID, ProductCode, ProductName, Price, Quantity"); // Added ProductCode
+                        LoadData("Products", "ProductID, ProductCode, ProductName, Price, Quantity"); 
                         break;
                     case "Employees":
-                        LoadData("Employees", "EmployeeID, FullName, DateOfBirth, Gender, Address");
+                        LoadData("Employees", "EmployeeID, EmployeeCode, FullName, DateOfBirth, Gender, Position, Address"); 
                         break;
                     case "Customers":
                         LoadData("Customers", "CustomerID, FullName, DateOfBirth, Address, Phone, RegistrationDate");
@@ -134,8 +135,8 @@ namespace SalesManagement
                             query = $"SELECT {columns} FROM Customers WHERE FullName LIKE @keyword OR Phone LIKE @keyword";
                             break;
                         case "Employees":
-                            columns = "EmployeeID, FullName, DateOfBirth, Gender, Address";
-                            query = $"SELECT {columns} FROM Employees WHERE FullName LIKE @keyword";
+                            columns = "EmployeeID, EmployeeCode, FullName, DateOfBirth, Gender, Position, Address"; 
+                            query = $"SELECT {columns} FROM Employees WHERE EmployeeCode LIKE @keyword OR FullName LIKE @keyword OR Position LIKE @keyword"; 
                             break;
                         case "Products":
                             columns = "ProductID, ProductCode, ProductName, Price, Quantity"; // Added ProductCode
@@ -179,6 +180,6 @@ namespace SalesManagement
             }
         }
 
-        
+      
     }
 }
