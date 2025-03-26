@@ -11,7 +11,6 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using Microsoft.Data.SqlClient;
 
-
 namespace SalesManagement
 {
     public partial class Management : Form
@@ -51,10 +50,9 @@ namespace SalesManagement
 
         private void LoadTabData()
         {
-            // Fix the typo 'tabcomtrol' to 'tabPage3' for Imports tab
-            if (tabControl1.SelectedTab == tabcomtrol) LoadTableData("Employees", dgvEmployees);
+            if (tabControl1.SelectedTab == tabPage1) LoadTableData("Imports", dgvImports);
             else if (tabControl1.SelectedTab == tabPage2) LoadTableData("Customers", dgvCustomers);
-            else if (tabControl1.SelectedTab == tabPage1) LoadTableData("Imports", dgvImports); // Fixed: tabcomtrol to tabPage3
+            else if (tabControl1.SelectedTab == tabPage1) LoadTableData("Employees", dgvEmployees);
             else if (tabControl1.SelectedTab == tabPage4) LoadTableData("Products", dgvProducts);
             else if (tabControl1.SelectedTab == tabPage5) LoadTableData("Users", dgvUsers);
             else if (tabControl1.SelectedTab == tabPage6)
@@ -114,20 +112,20 @@ namespace SalesManagement
             {
                 conne.Open();
 
-                // Populate cbOrderCustomer with CustomerID and FullName
+                // Populate cbOrderCustomer with CustomerID
                 SqlDataAdapter customerAdapter = new SqlDataAdapter("SELECT CustomerID, FullName FROM Customers", conne);
                 DataTable customerDt = new DataTable();
                 customerAdapter.Fill(customerDt);
                 cbOrderCustomer.DataSource = customerDt;
-                cbOrderCustomer.DisplayMember = "FullName";
+                cbOrderCustomer.DisplayMember = "CustomerID";
                 cbOrderCustomer.ValueMember = "CustomerID";
 
-                // Populate cbOrderEmployee with EmployeeID and FullName
+                // Populate cbOrderEmployee with EmployeeID
                 SqlDataAdapter employeeAdapter = new SqlDataAdapter("SELECT EmployeeID, FullName FROM Employees", conne);
                 DataTable employeeDt = new DataTable();
                 employeeAdapter.Fill(employeeDt);
                 cbOrderEmployee.DataSource = employeeDt;
-                cbOrderEmployee.DisplayMember = "FullName";
+                cbOrderEmployee.DisplayMember = "EmployeeID";
                 cbOrderEmployee.ValueMember = "EmployeeID";
 
                 // Populate cbImportProductID with ProductID only
@@ -135,7 +133,7 @@ namespace SalesManagement
                 DataTable productDt = new DataTable();
                 productAdapter.Fill(productDt);
                 cbImportProductID.DataSource = productDt;
-                cbImportProductID.DisplayMember = "ProductID"; // Hiển thị ProductID thay vì ProductName
+                cbImportProductID.DisplayMember = "ProductID";
                 cbImportProductID.ValueMember = "ProductID";
 
                 // Populate cbImportEmployeeID with EmployeeID only
@@ -143,7 +141,7 @@ namespace SalesManagement
                 DataTable importEmployeeDt = new DataTable();
                 importEmployeeAdapter.Fill(importEmployeeDt);
                 cbImportEmployeeID.DataSource = importEmployeeDt;
-                cbImportEmployeeID.DisplayMember = "EmployeeID"; // Hiển thị EmployeeID thay vì FullName
+                cbImportEmployeeID.DisplayMember = "EmployeeID";
                 cbImportEmployeeID.ValueMember = "EmployeeID";
 
                 // Populate cbOrderStatus
@@ -155,13 +153,48 @@ namespace SalesManagement
                 // Populate cbEmpPosition
                 cbEmpPosition.Items.AddRange(new[] { "Manager", "Sales", "Staff" });
 
-                // Populate cbRole with roles
-                cmbRole.Items.AddRange(new[] { "Admin", "Employee", "Customer" });
-                cmbRole.SelectedIndex = 0;
+                // Populate cbRole with roles (match database CHECK constraint)
+                cmbRole.Items.Clear();
+                cmbRole.Items.AddRange(new[] { "ADMIN", "EMPLOYEE", "CUSTOMER" }); // Use uppercase to match database
+                cmbRole.SelectedIndex = 0; // Default to "ADMIN"
+                cmbRole.DropDownStyle = ComboBoxStyle.DropDownList; // Prevent free text input
             }
             catch (Exception ex)
             {
                 MessageBox.Show($"Error loading ComboBox data: {ex.Message}", "ERROR", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            finally
+            {
+                if (conne.State == ConnectionState.Open)
+                    conne.Close();
+            }
+        }
+
+        private bool IsCustomerCodeUnique(string customerCode, string customerID = null)
+        {
+            try
+            {
+                conne.Open();
+                string query = "SELECT COUNT(*) FROM Customers WHERE CustomerCode = @CustomerCode";
+                if (!string.IsNullOrEmpty(customerID))
+                {
+                    query += " AND CustomerID != @CustomerID";
+                }
+                using (SqlCommand cmd = new SqlCommand(query, conne))
+                {
+                    cmd.Parameters.AddWithValue("@CustomerCode", customerCode);
+                    if (!string.IsNullOrEmpty(customerID))
+                    {
+                        cmd.Parameters.AddWithValue("@CustomerID", customerID);
+                    }
+                    int count = (int)cmd.ExecuteScalar();
+                    return count == 0;
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error checking CustomerCode uniqueness: {ex.Message}", "ERROR", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return false;
             }
             finally
             {
@@ -190,6 +223,22 @@ namespace SalesManagement
                     if (!Regex.IsMatch(txtCusPhone.Text, phonePattern))
                     {
                         MessageBox.Show("Phone must contain only digits (spaces or dashes are allowed).", "WARNING", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        return;
+                    }
+                    if (string.IsNullOrWhiteSpace(txtCusCode.Text))
+                    {
+                        MessageBox.Show("Customer Code is required.", "WARNING", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        return;
+                    }
+                    string codePattern = @"^[a-zA-Z0-9]+$";
+                    if (!Regex.IsMatch(txtCusCode.Text, codePattern))
+                    {
+                        MessageBox.Show("Customer Code must contain only letters and numbers (no spaces or special characters).", "WARNING", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        return;
+                    }
+                    if (!IsCustomerCodeUnique(txtCusCode.Text))
+                    {
+                        MessageBox.Show("Customer Code must be unique.", "WARNING", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                         return;
                     }
                 }
@@ -292,6 +341,14 @@ namespace SalesManagement
                         MessageBox.Show("Please select a role.", "WARNING", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                         return;
                     }
+                    // Validate Role value against allowed values
+                    string selectedRole = cmbRole.SelectedItem.ToString();
+                    string[] allowedRoles = { "ADMIN", "EMPLOYEE", "CUSTOMER" }; // Match database constraint
+                    if (!allowedRoles.Contains(selectedRole))
+                    {
+                        MessageBox.Show("Invalid Role selected. Role must be 'ADMIN', 'EMPLOYEE', or 'CUSTOMER'.", "WARNING", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        return;
+                    }
                 }
 
                 conne.Open();
@@ -314,7 +371,7 @@ namespace SalesManagement
                         case "Customers":
                             query = "INSERT INTO Customers (CustomerCode, FullName, DateOfBirth, Address, Phone, RegistrationDate) VALUES (@CustomerCode, @FullName, @DateOfBirth, @Address, @Phone, @RegistrationDate)";
                             cmd.CommandText = query;
-                            cmd.Parameters.AddWithValue("@CustomerCode", "CUS" + DateTime.Now.ToString("yyyyMMddHHmmss"));
+                            cmd.Parameters.AddWithValue("@CustomerCode", txtCusCode.Text);
                             cmd.Parameters.AddWithValue("@FullName", txtCusName.Text);
                             cmd.Parameters.AddWithValue("@DateOfBirth", dtpCuDateOfBirth.Value);
                             cmd.Parameters.AddWithValue("@Address", txtCusAddress.Text);
@@ -410,6 +467,22 @@ namespace SalesManagement
                     if (!string.IsNullOrWhiteSpace(txtCusAddress.Text) && Regex.IsMatch(txtCusAddress.Text, phonePattern))
                     {
                         MessageBox.Show("Address cannot be a phone number.", "WARNING", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        return;
+                    }
+                    if (string.IsNullOrWhiteSpace(txtCusCode.Text))
+                    {
+                        MessageBox.Show("Customer Code is required.", "WARNING", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        return;
+                    }
+                    string codePattern = @"^[a-zA-Z0-9]+$";
+                    if (!Regex.IsMatch(txtCusCode.Text, codePattern))
+                    {
+                        MessageBox.Show("Customer Code must contain only letters and numbers (no spaces or special characters).", "WARNING", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        return;
+                    }
+                    if (!IsCustomerCodeUnique(txtCusCode.Text, primaryKeyValue))
+                    {
+                        MessageBox.Show("Customer Code must be unique.", "WARNING", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                         return;
                     }
                 }
@@ -524,6 +597,14 @@ namespace SalesManagement
                         MessageBox.Show("Please select a role.", "WARNING", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                         return;
                     }
+                    // Validate Role value against allowed values
+                    string selectedRole = cmbRole.SelectedItem.ToString();
+                    string[] allowedRoles = { "ADMIN", "EMPLOYEE", "CUSTOMER" }; // Match database constraint
+                    if (!allowedRoles.Contains(selectedRole))
+                    {
+                        MessageBox.Show("Invalid Role selected. Role must be 'ADMIN', 'EMPLOYEE', or 'CUSTOMER'.", "WARNING", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        return;
+                    }
                 }
 
                 conne.Open();
@@ -545,9 +626,10 @@ namespace SalesManagement
                             cmd.Parameters.AddWithValue("@Address", txtEmpAddress.Text);
                             break;
                         case "Customers":
-                            query = "UPDATE Customers SET FullName = @FullName, DateOfBirth = @DateOfBirth, Address = @Address, Phone = @Phone, RegistrationDate = @RegistrationDate WHERE CustomerID = @CustomerID";
+                            query = "UPDATE Customers SET CustomerCode = @CustomerCode, FullName = @FullName, DateOfBirth = @DateOfBirth, Address = @Address, Phone = @Phone, RegistrationDate = @RegistrationDate WHERE CustomerID = @CustomerID";
                             cmd.CommandText = query;
                             cmd.Parameters.AddWithValue("@CustomerID", primaryKeyValue);
+                            cmd.Parameters.AddWithValue("@CustomerCode", txtCusCode.Text);
                             cmd.Parameters.AddWithValue("@FullName", txtCusName.Text);
                             cmd.Parameters.AddWithValue("@DateOfBirth", dtpCuDateOfBirth.Value);
                             cmd.Parameters.AddWithValue("@Address", txtCusAddress.Text);
@@ -1125,10 +1207,3 @@ namespace SalesManagement
         }
     }
 }
-
-
-
-
-
-
-
